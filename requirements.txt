@@ -1,0 +1,18 @@
+# Core Scientific and Geometric Libraries
+numpy>=1.23.0
+scipy>=1.9.0
+shapely>=2.0.0
+networkx>=3.0
+matplotlib>=3.6.0
+Pillow>=9.3.0
+svgwrite>=1.4.3
+scikit-learn>=1.2.0
+lxml>=4.9.0
+tqdm>=4.64.0
+
+# Interactive UI in Jupyter Notebook
+ipywidgets>=8.0.0
+IPython>=8.0.0
+
+# Constraint Optimization Engine (Optional / Recommended)
+ortools>=9.5.0

@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AAFPA Architect Engine Tool Definitions",
+  "description": "Standardized, strongly-typed machine-readable tool interfaces for the AAFPA Geometry and Validation Engine.",
+  "tools": [
+    {
+      "name": "get_current_plan",
+      "purpose": "Retrieve the full geometric state and metadata of the active floor plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "include_apertures": {"type": "boolean", "default": true},
+          "include_spatial_graph": {"type": "boolean", "default": true}
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "version": {"type": "integer"},
+          "topology": {"type": "string"},
+          "plot": {"type": "object"},
+          "rooms": {"type": "array"}
+        }
+      }
+    },
+    {
+      "name": "find_rooms",
+      "purpose": "Search active rooms matching a canonical type, spatial relationship, or identifier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {"type": "string"},
+          "room_id": {"type": "string"},
+          "relative_to": {"type": "string"},
+          "spatial_relation": {"type": "string", "enum": ["above", "below", "left", "right", "beside", "near", "opposite"]}
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "matching_rooms": {"type": "array"},
+          "count": {"type": "integer"}
+        }
+      }
+    },
+    {
+      "name": "resize_room",
+      "purpose": "Adjust the dimensions (width, length, or area) of a target room while enforcing constraints.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_room": {"type": "string"},
+          "target_id": {"type": "string"},
+          "dimension": {"type": "string", "enum": ["width", "length", "area", "auto"], "default": "auto"},
+          "delta_ft": {"type": "number", "default": 2.0},
+          "direction": {"type": "string", "enum": ["increase", "decrease"], "default": "increase"},
+          "hard_constraints": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "required": ["target_room"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"},
+          "plan": {"type": "object"},
+          "validation": {"type": "object"}
+        }
+      }
+    },
+    {
+      "name": "transfer_area",
+      "purpose": "Transfer floor space from a donor room/corridor to a recipient room while maintaining shared wall alignment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "source_room": {"type": "string"},
+          "source_id": {"type": "string"},
+          "target_room": {"type": "string"},
+          "target_id": {"type": "string"},
+          "amount_sqft": {"type": "number", "default": 20.0},
+          "hard_constraints": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        },
+        "required": ["source_room", "target_room"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"},
+          "plan": {"type": "object"}
+        }
+      }
+    },
+    {
+      "name": "add_room",
+      "purpose": "Add a new standard or custom room into available space adjacent to an existing anchor room.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {"type": "string"},
+          "area_sqft": {"type": "number", "default": 80.0},
+          "spatial_relation": {"type": "string", "enum": ["above", "below", "left", "right", "beside", "near"]},
+          "relative_to_type": {"type": "string"},
+          "relative_to_id": {"type": "string"},
+          "hard_constraints": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["room_type"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"},
+          "plan": {"type": "object"}
+        }
+      }
+    },
+    {
+      "name": "remove_room",
+      "purpose": "Remove an existing room from the plan and reallocate its area to circulation or adjacent spaces.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {"type": "string"},
+          "room_id": {"type": "string"}
+        },
+        "required": ["room_type"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"},
+          "plan": {"type": "object"}
+        }
+      }
+    },
+    {
+      "name": "replace_room",
+      "purpose": "Convert an existing room into another functional room type without altering its geometry.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "old_type": {"type": "string"},
+          "new_type": {"type": "string"},
+          "room_id": {"type": "string"}
+        },
+        "required": ["old_type", "new_type"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "move_room",
+      "purpose": "Relocate a room to a new spatial position relative to another anchor room.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_type": {"type": "string"},
+          "room_id": {"type": "string"},
+          "spatial_relation": {"type": "string"},
+          "relative_to_type": {"type": "string"}
+        },
+        "required": ["room_type"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "swap_rooms",
+      "purpose": "Swap the geometric positions and dimensions of two existing rooms.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "room_a": {"type": "string"},
+          "room_b": {"type": "string"}
+        },
+        "required": ["room_a", "room_b"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "improve_objective",
+      "purpose": "Execute targeted architectural mutations to satisfy a high-level spatial objective.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "objective": {
+            "type": "string",
+            "enum": ["spaciousness", "ventilation", "lighting", "privacy", "circulation"]
+          }
+        },
+        "required": ["objective"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "message": {"type": "string"}
+        }
+      }
+    },
+    {
+      "name": "validate_plan",
+      "purpose": "Perform full deterministic validation against NBC 2016 codes, non-overlap, plot boundaries, and minimum room areas.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "plan": {"type": "object"}
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "hard_violations": {"type": "integer"},
+          "violation_details": {"type": "array"}
+        }
+      }
+    },
+    {
+      "name": "undo",
+      "purpose": "Restore the floor plan state to version N-1.",
+      "parameters": {"type": "object"},
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "version": {"type": "integer"}
+        }
+      }
+    },
+    {
+      "name": "redo",
+      "purpose": "Re-apply the previously undone modification to advance to version N+1.",
+      "parameters": {"type": "object"},
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "version": {"type": "integer"}
+        }
+      }
+    }
+  ]
+}

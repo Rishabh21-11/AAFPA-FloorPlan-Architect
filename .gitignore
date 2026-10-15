@@ -1,0 +1,29 @@
+
+# Python cache
+__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Node dependencies
+node_modules/
+
+# Secrets
+.env
+
+# Generated outputs
+sample_outputs/
+
+# Large dataset archive
+RPLAN_dataset.zip
+
+cubicasa5k/
+
+
+
+# Temporary session files
+notebook_exec_progress.txt
+session_state.pkl

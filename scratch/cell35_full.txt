@@ -1,0 +1,249 @@
+# SECTION 24 -- MULTI-LAYOUT STUDIO, CHAT CONSOLE & INTERACTIVE WORKSPACE (PRD Sec 24, 25)
+# AAFPA 2.0 Real-Time Conversational Design Studio for Jupyter Notebook
+
+import ipywidgets as widgets
+from IPython.display import display, clear_output, HTML
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from aafpa import (
+    InteractiveFloorPlanStudioSession,
+    get_studio_session,
+    aafpa_chat,
+    aafpa_select_layout,
+    aafpa_finalize,
+    aafpa_edit
+)
+
+def launch_interactive_studio():
+    """
+    Launches the live, interactive AAFPA 2.0 Floor Plan Studio directly inside Jupyter Notebook.
+    Allows real-time conversational floor plan generation, 4-layout selection, and iterative editing.
+    """
+    out = widgets.Output()
+    session = get_studio_session()
+
+    header_html = widgets.HTML(
+        """
+        <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 14px; border: 1px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #38BDF8;">🏛️ AAFPA 2.0 — Live Architectural Design Studio</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #94A3B8;">
+                        • <b>Step 1:</b> Enter your house requirements below & click <b>Generate 4 Layout Options</b>.<br>
+                        • <b>Step 2:</b> Click a button (<b>Layout 1 / 2 / 3 / 4</b>) to activate your chosen plan.<br>
+                        • <b>Step 3:</b> Type any instructions in the chat box to edit and refine the layout in real time!
+                    </p>
+                </div>
+                <div style="background: #0284C7; color: white; padding: 6px 14px; border-radius: 999px; font-size: 11px; font-weight: bold;">
+                    NBC 2016 Compliant &bull; Real-Time
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    prompt_input = widgets.Textarea(
+        value="1 want a 2bhk in 1000 square feet area",
+        placeholder="Enter your housing requirements in plain English...",
+        description="📋 Requirements:",
+        layout=widgets.Layout(width="98%", height="65px")
+    )
+
+    btn_gen4 = widgets.Button(
+        description="🏗️ Generate 4 Distinct Layouts",
+        button_style="primary",
+        icon="magic",
+        layout=widgets.Layout(width="260px", height="38px")
+    )
+
+    # Layout selection buttons
+    btn_l1 = widgets.Button(description="🔵 Layout 1 (Open-Plan)", button_style="info", layout=widgets.Layout(width="180px", height="34px"))
+    btn_l2 = widgets.Button(description="🟢 Layout 2 (Central Spine)", button_style="success", layout=widgets.Layout(width="180px", height="34px"))
+    btn_l3 = widgets.Button(description="🟣 Layout 3 (Split-Wing)", button_style="info", layout=widgets.Layout(width="180px", height="34px"))
+    btn_l4 = widgets.Button(description="🟠 Layout 4 (Vastu)", button_style="warning", layout=widgets.Layout(width="180px", height="34px"))
+
+    btn_undo = widgets.Button(description="↩️ Undo", button_style="", layout=widgets.Layout(width="100px", height="34px"))
+    btn_finalize = widgets.Button(description="🔒 Finalize Plan", button_style="success", layout=widgets.Layout(width="140px", height="34px"))
+
+    chat_input = widgets.Text(
+        value="",
+        placeholder="Type any modification (e.g. 'add common area on right of bathroom', 'reduce dining and increase kitchen', 'add gates and windows')...",
+        description="💬 Chat Edit:",
+        layout=widgets.Layout(width="78%")
+    )
+    btn_chat_send = widgets.Button(
+        description="🚀 Apply Edit",
+        button_style="primary",
+        layout=widgets.Layout(width="140px", height="36px")
+    )
+
+    status_card = widgets.HTML(
+        """<div style='background:#F1F5F9; padding:10px 16px; border-radius:8px; margin:8px 0; border-left:4px solid #0284C7; font-size:13px; color:#1E293B;'>
+        <b>Studio Status:</b> Ready. Enter requirements above and click <b>Generate 4 Distinct Layouts</b>.
+        </div>"""
+    )
+
+    def update_status(text: str, color="#0284C7"):
+        status_card.value = (
+            f"<div style='background:#F1F5F9; padding:10px 16px; border-radius:8px; margin:8px 0; border-left:4px solid {color}; font-size:13px; color:#1E293B;'>"
+            f"{text}</div>"
+        )
+
+    def on_gen4_clicked(b):
+        with out:
+            clear_output(wait=True)
+            update_status("<b>Generating 4 distinct architectural layouts...</b>", "#3B82F6")
+            res = aafpa_chat(prompt_input.value, multi_layout=True)
+            if "figure" in res and res["figure"] is not None:
+                display(res["figure"])
+            elif "candidates" in res:
+                # Render 4 candidates figure
+                cands = res["candidates"]
+                W, L = 32.0, 31.25
+                fig, axes = plt.subplots(1, len(cands), figsize=(5.8 * len(cands), 6.0), dpi=120)
+                fig.patch.set_facecolor("#F8FAFC")
+                banner_cols = ["#0284C7", "#7C3AED", "#059669", "#D97706"]
+                room_cols = {
+                    "living_room": "#E0E7FF", "master_bedroom": "#E2E8F0", "bedroom": "#F1F5F9",
+                    "kitchen": "#FEF08A", "dining": "#FEF3C7", "bathroom": "#BAE6FD",
+                    "balcony": "#D1FAE5", "study": "#EDE9FE", "pooja_room": "#FFEDD5", "corridor": "#CBD5E1"
+                }
+                for idx, item in enumerate(cands):
+                    ax = axes[idx]
+                    p = item["plan"]
+                    bcol = banner_cols[idx % len(banner_cols)]
+                    ax.set_xlim(-2.5, W + 2.5); ax.set_ylim(-2.5, L + 2.5)
+                    ax.set_aspect("equal"); ax.invert_yaxis(); ax.set_facecolor("#FFFFFF")
+                    ax.add_patch(plt.Rectangle((0, 0), W, L, fill=True, facecolor="#FFFFFF", edgecolor=bcol, linewidth=2.8, zorder=2))
+                    for r in p.rooms:
+                        c = room_cols.get(r.type, "#F1F5F9")
+                        ax.add_patch(plt.Rectangle((r.x, r.y), r.width, r.length, facecolor=c, edgecolor="#475569", linewidth=1.2, zorder=3))
+                        cx, cy = r.x + r.width / 2.0, r.y + r.length / 2.0
+                        ax.text(cx, cy - 0.35, r.type.replace("_", " ").title(), ha="center", va="center", fontsize=7.2, fontweight="bold", color="#0F172A", zorder=7)
+                        ax.text(cx, cy + 0.45, f"{r.width:.0f}'x{r.length:.0f}'", ha="center", va="center", fontsize=6.2, color="#475569", zorder=7)
+                    ax.text(W/2.0, -1.2, f"LAYOUT {idx+1}: {item['title']}", ha="center", fontsize=8.5, fontweight="bold", color=bcol,
+                            bbox=dict(boxstyle="round,pad=0.35", facecolor="#FFFFFF", edgecolor=bcol, lw=1.8))
+                    ax.axis("off")
+                fig.suptitle("4 Distinct Architectural Layout Options (Click a Layout Button below to select)", fontsize=11.5, fontweight="bold", y=1.02)
+                plt.tight_layout()
+                plt.show()
+            update_status("<b>✅ 4 Distinct Layouts Generated!</b> Click <b>Layout 1, 2, 3, or 4</b> below to activate it for editing.", "#10B981")
+
+    def on_select_layout(idx):
+        with out:
+            clear_output(wait=True)
+            update_status(f"<b>Activating Layout {idx} as your active working plan...</b>", "#3B82F6")
+            res = aafpa_select_layout(idx)
+            plan = res.get("plan") or session.memory.current_plan
+            if plan:
+                _render_notebook_plan(plan, f"Active Working Plan (Layout {idx} Selected)")
+            update_status(f"<b>✅ Workspace Active: Layout {idx} Activated!</b> You can now type your modifications in the chat box below.", "#059669")
+
+    def on_chat_send(b):
+        txt = chat_input.value.strip()
+        if not txt: return
+        with out:
+            clear_output(wait=True)
+            update_status(f"<b>Applying instruction:</b> <i>'{txt}'</i>...", "#3B82F6")
+            res = aafpa_chat(txt)
+            plan = res.get("plan") or session.memory.current_plan
+            if plan:
+                _render_notebook_plan(plan, f"Updated Floor Plan (v{getattr(plan, 'version', 1)})")
+            exp = res.get("explanation") or "Layout modified successfully."
+            update_status(f"<b>✅ Applied:</b> {exp}", "#059669")
+            chat_input.value = ""
+
+    def on_undo_clicked(b):
+        with out:
+            clear_output(wait=True)
+            res = aafpa_chat("undo")
+            plan = res.get("plan") or session.memory.current_plan
+            if plan:
+                _render_notebook_plan(plan, f"Reverted Floor Plan (v{getattr(plan, 'version', 1)})")
+            update_status("<b>↩️ Reverted to previous plan version.</b>", "#D97706")
+
+    def on_finalize_clicked(b):
+        with out:
+            clear_output(wait=True)
+            res = aafpa_finalize()
+            plan = res.get("plan") or session.memory.current_plan
+            if plan:
+                _render_notebook_plan(plan, "Master Final Floor Plan (Certified & Locked)")
+            update_status("<b>🏆 Final Master Architectural Layout Certified and Locked!</b>", "#16A34A")
+
+    def _render_notebook_plan(plan, title="Active Floor Plan"):
+        W = getattr(plan.plot, "width_ft", 32.0)
+        L = getattr(plan.plot, "length_ft", 31.25)
+        fig, ax = plt.subplots(1, 1, figsize=(9.5, 8.5), dpi=120)
+        ax.set_xlim(-3.0, W + 3.5); ax.set_ylim(-3.0, L + 3.5)
+        ax.set_aspect("equal"); ax.invert_yaxis(); ax.set_facecolor("#FCFCFD"); fig.patch.set_facecolor("#F8FAFC")
+        ax.add_patch(plt.Rectangle((0, 0), W, L, fill=True, facecolor="#FFFFFF", edgecolor="#0F172A", linewidth=3.2, zorder=2))
+        room_cols = {
+            "living_room": "#E0E7FF", "master_bedroom": "#E2E8F0", "bedroom": "#F1F5F9",
+            "kitchen": "#FEF08A", "dining": "#FEF3C7", "bathroom": "#BAE6FD",
+            "balcony": "#D1FAE5", "study": "#EDE9FE", "pooja_room": "#FFEDD5", "foyer": "#FDE68A", "corridor": "#CBD5E1"
+        }
+        for r in plan.rooms:
+            c = room_cols.get(r.type, "#F1F5F9")
+            ax.add_patch(plt.Rectangle((r.x, r.y), r.width, r.length, facecolor=c, edgecolor="#475569", linewidth=1.5, zorder=3))
+            cx, cy = r.x + r.width / 2.0, r.y + r.length / 2.0
+            r_name = "Entrance Foyer" if r.type == "foyer" else r.type.replace("_", " ").title()
+            ax.text(cx, cy - 0.45, r_name, ha="center", va="center", fontsize=8.2, fontweight="bold", color="#0F172A", zorder=7)
+            ax.text(cx, cy + 0.6, f"{r.width:.1f}' x {r.length:.1f}'\n({r.area:.0f} sqft)", ha="center", va="center", fontsize=7.0, color="#334155", zorder=7)
+
+        # Doors and windows
+        for r in plan.rooms:
+            for d in getattr(r, "doors", []):
+                px, py = d["position"]["x"], d["position"]["y"]
+                dw = d.get("width", 2.8)
+                if d.get("orientation") == "horizontal":
+                    ax.plot([px - dw/2, px + dw/2], [py, py], color="#FFFFFF", linewidth=3.2, zorder=8)
+                    ax.plot([px - dw/2, px - dw/2], [py, py - dw*0.8], color="#854D0E", linewidth=2.2, zorder=9)
+                    arc = mpatches.Arc((px - dw/2, py), dw*1.6, dw*1.6, angle=0, theta1=0, theta2=90, color="#CA8A04", linestyle=":", linewidth=1.6, zorder=8)
+                    ax.add_patch(arc)
+                else:
+                    ax.plot([px, px], [py - dw/2, py + dw/2], color="#FFFFFF", linewidth=3.2, zorder=8)
+                    ax.plot([px, px + dw*0.8], [py - dw/2, py - dw/2], color="#854D0E", linewidth=2.2, zorder=9)
+                    arc = mpatches.Arc((px, py - dw/2), dw*1.6, dw*1.6, angle=0, theta1=270, theta2=360, color="#CA8A04", linestyle=":", linewidth=1.6, zorder=8)
+                    ax.add_patch(arc)
+            for win in getattr(r, "windows", []):
+                wx, wy = win["position"]["x"], win["position"]["y"]
+                ww = win.get("width", 3.5)
+                if win.get("wall") in ("N", "S"):
+                    ax.plot([wx - ww/2, wx + ww/2], [wy, wy], color="#0284C7", linewidth=3.5, zorder=10)
+                else:
+                    ax.plot([wx, wx], [wy - ww/2, wy + ww/2], color="#0284C7", linewidth=3.5, zorder=10)
+
+        ax.set_title(f"🏛️ {title} (v{getattr(plan, 'version', 1)}) | Built-up: {sum(r.area for r in plan.rooms):.0f} sqft\nPlot: {W:.0f}' x {L:.0f}' ({W*L:.0f} sqft) | 100% NBC 2016 Compliant",
+                     fontsize=10.5, fontweight="bold", color="#0F172A", pad=12)
+        ax.axis("off")
+        plt.tight_layout()
+        plt.show()
+
+    btn_gen4.on_click(on_gen4_clicked)
+    btn_l1.on_click(lambda b: on_select_layout(1))
+    btn_l2.on_click(lambda b: on_select_layout(2))
+    btn_l3.on_click(lambda b: on_select_layout(3))
+    btn_l4.on_click(lambda b: on_select_layout(4))
+    btn_undo.on_click(on_undo_clicked)
+    btn_finalize.on_click(on_finalize_clicked)
+    btn_chat_send.on_click(on_chat_send)
+
+    row1 = widgets.HBox([btn_gen4])
+    row2 = widgets.HBox([widgets.Label("<b>1. Select Layout:</b>"), btn_l1, btn_l2, btn_l3, btn_l4])
+    row3 = widgets.HBox([chat_input, btn_chat_send, btn_undo, btn_finalize])
+
+    ui_container = widgets.VBox([
+        header_html,
+        prompt_input,
+        row1,
+        widgets.HTML("<hr style='border:0; height:1px; background:#CBD5E1; margin:10px 0;'>"),
+        row2,
+        widgets.HTML("<div style='height:6px;'></div>"),
+        row3,
+        status_card,
+        out
+    ])
+    display(ui_container)
+
+print("Interactive Studio loaded. Run launch_interactive_studio() to launch the interactive UI directly inside the notebook.")
